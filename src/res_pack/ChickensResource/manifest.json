@@ -1,0 +1,17 @@
+{
+    "format_version": 1,
+    "header": {
+        "name": "Resource for Roost",
+        "description": "add chickens",
+        "uuid": "22fbc704-fedf-4b9f-862d-cfc93f2f9b6e",
+        "version": [0, 0, 1]
+    },
+    "modules": [
+        {
+            "description": "",
+            "type": "resources",
+            "uuid": "f3e1dfa6-3849-4035-96f5-98453596c4a3",
+            "version": [0, 0, 1]
+        }
+    ]
+}

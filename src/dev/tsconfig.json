@@ -1,0 +1,28 @@
+{
+    "compilerOptions": {
+        "target": "ES5",
+        "lib": [
+            "ESNext"
+        ],
+        "strict": false,
+        "skipLibCheck": true,
+        "outFile": "../main.js",
+        "newLine": "LF",
+        "experimentalDecorators":true
+    },
+    "include": [
+
+        "header.ts",
+
+        "SugoiWindow.ts"
+
+    ],
+    "files": [
+        "../../declarations/android-declarations.d.ts",
+        "../../declarations/android.d.ts",
+        "../../declarations/core-engine.d.ts",
+        "../../declarations/kex.d.ts",
+        "../../declarations/BlockEngine.d.ts",
+        "../../declarations/EnhancedRecipes.d.ts"
+    ]
+}

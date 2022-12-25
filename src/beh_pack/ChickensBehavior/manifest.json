@@ -1,0 +1,23 @@
+{
+    "format_version": 1,
+    "header": {
+        "name": "Behavior for Roost",
+        "description": "add chickens",
+        "uuid": "afabf23d-87f0-46f8-a1e6-565076f429ce",
+        "version": [0, 0, 1]
+    },
+    "modules": [
+        {
+            "description": "",
+            "type": "data",
+            "uuid": "e09e6355-d750-49fa-9e77-1bacfcfb0eb5",
+            "version": [0, 0, 1]
+        }
+    ],
+    "dependencies": [
+        {
+            "uuid": "3f5350c3-d80b-4850-8d6d-0a547ef420ed",
+            "version": [0, 0, 1]
+        }
+    ]
+}
