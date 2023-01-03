@@ -14,7 +14,13 @@
 
         "header.ts",
 
-        "SugoiWindow.ts"
+        "item/colored_egg.ts",
+        "item/liquid_egg.ts",
+
+        "ChickenEntity.ts",
+        "define.ts",
+
+        "footer.ts"
 
     ],
     "files": [
@@ -23,6 +29,7 @@
         "../../declarations/core-engine.d.ts",
         "../../declarations/kex.d.ts",
         "../../declarations/BlockEngine.d.ts",
-        "../../declarations/EnhancedRecipes.d.ts"
+        "../../declarations/EnhancedRecipes.d.ts",
+        "../../declarations/Roost.d.ts"
     ]
 }
