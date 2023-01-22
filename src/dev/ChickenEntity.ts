@@ -1,3 +1,5 @@
+type ChickenBiomeType = "NONE" | "NORMAL" | "SNOW" | "HELL";
+
 class ChickenEntity {
 
     private static entities: ChickenEntity[] = [];
@@ -53,9 +55,9 @@ class ChickenEntity {
 
     getDropItems(): string[] {
         if(this.dropItem){
-            return [KEX.AddonUtils.getAddonItemIdentifier(this.dropItem.id) + ""];
+            return [getAddonItemIdentifier(this.dropItem.id) + ""];
         }
-        return this.chicken.getProducts().map(product => KEX.AddonUtils.getAddonItemIdentifier(product.id) + "");
+        return this.chicken.getProducts().map(product => getAddonItemIdentifier(product.id) + "");
     }
 
     writeLangForResource(path: string): void {
@@ -197,7 +199,7 @@ class ChickenEntity {
                             "min_wait_time": this.chicken.getMinLayTime() * array.length,
                             "max_wait_time": this.chicken.getMaxLayTime() * array.length,
                             "spawn_sound": "plop",
-                            "spawn_item": KEX.AddonUtils.getAddonItemIdentifier(item.id) + "",
+                            "spawn_item": getAddonItemIdentifier(item.id) + "",
                             "filters": {
                                 "test": "rider_count", "subject": "self", "operator": "==", "value": 0
                             }
@@ -378,7 +380,7 @@ class ChickenEntity {
                 },
                 {
                     "rolls": 1,
-                    "entries": (() => this.getDropItems().map(item => (                        {
+                    "entries": (() => this.getDropItems().map(item => ({
                         "type": "item",
                         "name": item,
                         "weight": 1,

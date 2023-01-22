@@ -15,13 +15,38 @@ var __extends = (this && this.__extends) || (function () {
 })();
 IMPORT("BlockEngine");
 IMPORT("EnhancedRecipes");
+var getAddonItemIdentifier = function (id) {
+    if (IDRegistry.isVanilla(id)) {
+        for (var key in VanillaBlockID) {
+            //@ts-ignore
+            if (VanillaBlockID[key] === id) {
+                return "minecraft:" + key;
+            }
+        }
+        for (var key in VanillaItemID) {
+            //@ts-ignore
+            if (VanillaItemID[key] === id) {
+                return "minecraft:" + key;
+            }
+        }
+        return;
+    }
+    var info = IDRegistry.getIdInfo(id);
+    if (info) {
+        return "minecraft:" + info.split(":")[1];
+    }
+    return "";
+};
+Callback.addCallback("PostLoaded", function () {
+    ChickenEntity.generateAllJson();
+});
 var ItemColoredEgg = /** @class */ (function (_super) {
     __extends(ItemColoredEgg, _super);
     function ItemColoredEgg(stringID, name, insideEntity) {
         var _this = _super.call(this, stringID, name, stringID) || this;
         _this.setMaxStack(16);
         _this.insideEntity = insideEntity;
-        Item.addCreativeGroup("colored_egg", "Colored Egg", [_this.id]);
+        Item.addCreativeGroup("colored_egg", "Colored Eggs", [_this.id]);
         return _this;
         /*
                 const model = ItemModel.newStandalone();
@@ -102,34 +127,33 @@ Callback.addCallback("PreLoaded", function () {
 });
 var ItemLiquidEgg = /** @class */ (function (_super) {
     __extends(ItemLiquidEgg, _super);
-    function ItemLiquidEgg(stringID, name, liquidTile) {
+    function ItemLiquidEgg(stringID, name, liquid) {
         var _this = _super.call(this, stringID, name, stringID) || this;
         _this.setMaxStack(16);
-        _this.liquidTile = liquidTile;
-        Item.addCreativeGroup("liquid_egg", "Liquid Egg", [_this.id]);
+        _this.liquid = liquid;
+        Item.addCreativeGroup("liquid_egg", "Liquid Eggs", [_this.id]);
         return _this;
     }
-    ItemLiquidEgg.prototype.onItemUse = function (coords, item, block, playerUid) {
-        var player = new PlayerEntity(playerUid);
-        var region = WorldRegion.getForActor(playerUid);
+    ItemLiquidEgg.prototype.onItemUse = function (coords, item, block, player) {
+        var region = WorldRegion.getForActor(player);
         var place;
         if (World.canTileBeReplaced(block.id, block.data)) {
             place = coords;
         }
         else {
             var block2 = region.getBlock(coords.relative.x, coords.relative.y, coords.relative.z);
-            if (World.canTileBeReplaced(block2.id, block2.data)) {
-                place = coords.relative;
+            if (!World.canTileBeReplaced(block2.id, block2.data)) {
+                return;
             }
-            return;
+            place = coords.relative;
         }
-        region.setBlock(place, this.liquidTile, 0);
-        player.decreaseCarriedItem();
+        region.setBlock(place, LiquidRegistry.getBlockByLiquid(this.liquid), 0);
+        Entity.setCarriedItem(player, item.id, item.count - 1, item.data, item.extra);
     };
     return ItemLiquidEgg;
 }(ItemCommon));
-ItemRegistry.registerItem(new ItemLiquidEgg("liquid_egg_water", "Water Egg", VanillaBlockID.water));
-ItemRegistry.registerItem(new ItemLiquidEgg("liquid_egg_lava", "Lava Egg", VanillaBlockID.lava));
+ItemRegistry.registerItem(new ItemLiquidEgg("liquid_egg_water", "Water Egg", "water"));
+ItemRegistry.registerItem(new ItemLiquidEgg("liquid_egg_lava", "Lava Egg", "lava"));
 var ChickenEntity = /** @class */ (function () {
     function ChickenEntity(chicken, eggColorBase, eggColorOvl) {
         chicken.setEntityIdentifier("chickens:" + chicken.stringID);
@@ -172,9 +196,9 @@ var ChickenEntity = /** @class */ (function () {
     };
     ChickenEntity.prototype.getDropItems = function () {
         if (this.dropItem) {
-            return [KEX.AddonUtils.getAddonItemIdentifier(this.dropItem.id) + ""];
+            return [getAddonItemIdentifier(this.dropItem.id) + ""];
         }
-        return this.chicken.getProducts().map(function (product) { return KEX.AddonUtils.getAddonItemIdentifier(product.id) + ""; });
+        return this.chicken.getProducts().map(function (product) { return getAddonItemIdentifier(product.id) + ""; });
     };
     ChickenEntity.prototype.writeLangForResource = function (path) {
         FileTools.WriteText(path, "item.spawn_egg.entity.".concat(this.chicken.identifier, ".name=Spawn ").concat(this.chicken.name, "\nentity.").concat(this.chicken.identifier, ".name=").concat(this.chicken.name, "\n"), true);
@@ -309,12 +333,10 @@ var ChickenEntity = /** @class */ (function () {
                             }
                         },
                         "minecraft:spawn_entity": this.chicken.getProducts().map(function (item, index, array) { return ({
-                            //"min_wait_time": this.chicken.getMinLayTime() * array.length,
-                            //"max_wait_time": this.chicken.getMaxLayTime() * array.length,
-                            "min_wait_time": 30,
-                            "max_wait_time": 60,
+                            "min_wait_time": _this.chicken.getMinLayTime() * array.length,
+                            "max_wait_time": _this.chicken.getMaxLayTime() * array.length,
                             "spawn_sound": "plop",
-                            "spawn_item": KEX.AddonUtils.getAddonItemIdentifier(item.id) + "",
+                            "spawn_item": getAddonItemIdentifier(item.id) + "",
                             "filters": {
                                 "test": "rider_count", "subject": "self", "operator": "==", "value": 0
                             }
@@ -557,6 +579,20 @@ var RoostAPI;
 (function (RoostAPI) {
     var Chicken;
     (function (Chicken) {
+        Chicken.$smart = new RoostAPI.ItemChicken("chicken_smart", "Smart Chicken", ["egg"]);
+        Callback.addCallback("PlayerAttack", function (player, entity) {
+            var item = Entity.getCarriedItem(player);
+            if (item.id == VanillaItemID.book && Entity.getTypeName(entity).split("<")[0] == Chicken.$vanilla.identifier) {
+                var pos = Entity.getPosition(entity);
+                var look = Entity.getLookAngle(entity);
+                Entity.remove(entity);
+                var ent = AddonEntityRegistry.spawn(pos.x, pos.y, pos.z, Chicken.$smart.identifier) - 0;
+                Entity.setLookAngle(ent, look.yaw, look.pitch);
+                for (var i = 0; i < 20; i++) {
+                    Particles.addParticle(EParticleType.REDSTONE, pos.x + Math.random() * 0.6 - 0.3, pos.y + Math.random() * 0.6, pos.z + Math.random() * 0.6 - 0.3, Math.random() * 0.02, Math.random() * 0.2, Math.random() * 0.02);
+                }
+            }
+        });
         Chicken.$dye_black = new RoostAPI.ItemChicken("chicken_dye_black", "Ink Black Chicken", ["black_dye", "ink_sac"]);
         Chicken.$dye_red = new RoostAPI.ItemChicken("chicken_dye_red", "Red Chicken", ["red_dye"]);
         Chicken.$dye_green = new RoostAPI.ItemChicken("chicken_dye_green", "Cactus Green Chicken", ["green_dye", "cactus"]);
@@ -564,12 +600,12 @@ var RoostAPI;
         Chicken.$dye_blue = new RoostAPI.ItemChicken("chicken_dye_blue", "Lapis Blue Chicken", ["blue_dye", "lapis_lazuli"]);
         Chicken.$dye_purple = new RoostAPI.ItemChicken("chicken_dye_purple", "Purple Chicken", ["purple_dye"]);
         Chicken.$dye_cyan = new RoostAPI.ItemChicken("chicken_dye_cyan", "Cyan Chicken", ["cyan_dye"]);
-        Chicken.$dye_lightgray = new RoostAPI.ItemChicken("chicken_dye_lightgray", "Lightgray Chicken", ["light_gray_dye"]);
+        Chicken.$dye_lightgray = new RoostAPI.ItemChicken("chicken_dye_lightgray", "Light Gray Chicken", ["light_gray_dye"]);
         Chicken.$dye_gray = new RoostAPI.ItemChicken("chicken_dye_gray", "Gray Chicken", ["gray_dye"]);
         Chicken.$dye_pink = new RoostAPI.ItemChicken("chicken_dye_pink", "Pink Chicken", ["pink_dye"]);
         Chicken.$dye_lime = new RoostAPI.ItemChicken("chicken_dye_lime", "Lime Chicken", ["lime_dye"]);
         Chicken.$dye_yellow = new RoostAPI.ItemChicken("chicken_dye_yellow", "Yellow Chicken", ["yellow_dye"]);
-        Chicken.$dye_lightblue = new RoostAPI.ItemChicken("chicken_dye_lightblue", "Lightblue Chicken", ["light_blue_dye"]);
+        Chicken.$dye_lightblue = new RoostAPI.ItemChicken("chicken_dye_lightblue", "Light Blue Chicken", ["light_blue_dye"]);
         Chicken.$dye_magenta = new RoostAPI.ItemChicken("chicken_dye_magenta", "Magenta Chicken", ["magenta_dye"]);
         Chicken.$dye_orange = new RoostAPI.ItemChicken("chicken_dye_orange", "Orange Chicken", ["orange_dye"]);
         Chicken.$dye_white = new RoostAPI.ItemChicken("chicken_dye_white", "Bone White Chicken", ["white_dye", "bone_meal"]);
@@ -601,7 +637,42 @@ var RoostAPI;
         Chicken.$glass.setParents(Chicken.$quartz, Chicken.$redstone);
         Chicken.$iron.setParents(Chicken.$flint, Chicken.$dye_white);
         Chicken.$coal.setParents(Chicken.$flint, Chicken.$log);
-        //export const $aa = new RoostAPI.ItemChicken("chicken_", "Aaaa Chicken", []);
+        Chicken.$gold = new RoostAPI.ItemChicken("chicken_gold", "Gold Chicken", ["gold_nugget"]);
+        Chicken.$snowball = new RoostAPI.ItemChicken("chicken_snowball", "Snowball Chicken", ["snowball"]);
+        Chicken.$water = new RoostAPI.ItemChicken("chicken_water", "Water Chicken", [ItemID.liquid_egg_water]);
+        Chicken.$lava = new RoostAPI.ItemChicken("chicken_lava", "Lava Chicken", [ItemID.liquid_egg_lava]);
+        Chicken.$clay = new RoostAPI.ItemChicken("chicken_clay", "Clay Chicken", ["clay_ball"]);
+        Chicken.$leather = new RoostAPI.ItemChicken("chicken_leather", "Leather Chicken", ["leather"]);
+        Chicken.$netherwart = new RoostAPI.ItemChicken("chicken_netherwart", "Nether Wart Chicken", ["nether_wart"]);
+        Chicken.$gold.setParents(Chicken.$iron, Chicken.$dye_yellow);
+        Chicken.$snowball.setParents(Chicken.$dye_blue, Chicken.$log);
+        Chicken.$water.setParents(Chicken.$gunpowder, Chicken.$snowball);
+        Chicken.$lava.setParents(Chicken.$coal, Chicken.$quartz);
+        Chicken.$clay.setParents(Chicken.$snowball, Chicken.$sand);
+        Chicken.$leather.setParents(Chicken.$string, Chicken.$dye_brown);
+        Chicken.$netherwart.setParents(Chicken.$dye_brown, Chicken.$glowstone);
+        Chicken.$diamond = new RoostAPI.ItemChicken("chicken_diamond", "Diamond Chicken", ["diamond"]);
+        Chicken.$blaze = new RoostAPI.ItemChicken("chicken_blaze", "Blaze Chicken", ["blaze_rod"]);
+        Chicken.$slime = new RoostAPI.ItemChicken("chicken_slime", "Slime Chicken", ["slime_ball"]);
+        Chicken.$diamond.setParents(Chicken.$glass, Chicken.$gold);
+        Chicken.$blaze.setParents(Chicken.$gold, Chicken.$lava);
+        Chicken.$slime.setParents(Chicken.$clay, Chicken.$dye_green);
+        Chicken.$ender = new RoostAPI.ItemChicken("chicken_ender", "Ender Chicken", ["ender_pearl"]);
+        Chicken.$ghast = new RoostAPI.ItemChicken("chicken_ghast", "Ghast Chicken", ["ghast_tear"]);
+        Chicken.$emerald = new RoostAPI.ItemChicken("chicken_emerald", "Emerald Chicken", ["emerald"]);
+        Chicken.$magmacream = new RoostAPI.ItemChicken("chicken_magmacream", "Magma Cream Chicken", ["magma_cream"]);
+        Chicken.$pshard = new RoostAPI.ItemChicken("chicken_pshard", "Prismarin Shard Chicken", ["prismarine_shard"]);
+        Chicken.$pcrystal = new RoostAPI.ItemChicken("chicken_pcrystal", "Prismarine Crystal Chicken", ["prismarine_crystals"]);
+        Chicken.$obsidian = new RoostAPI.ItemChicken("chicken_obsidian", "Obsidian Chicken", ["obsidian"]);
+        Chicken.$soulsand = new RoostAPI.ItemChicken("chicken_soulsand", "Soulsand Chicken", ["soul_sand"]);
+        Chicken.$ender.setParents(Chicken.$diamond, Chicken.$netherwart);
+        Chicken.$ghast.setParents(Chicken.$dye_white, Chicken.$blaze);
+        Chicken.$emerald.setParents(Chicken.$diamond, Chicken.$dye_green);
+        Chicken.$magmacream.setParents(Chicken.$slime, Chicken.$blaze);
+        Chicken.$pshard.setParents(Chicken.$water, Chicken.$dye_blue);
+        Chicken.$pcrystal.setParents(Chicken.$water, Chicken.$emerald);
+        Chicken.$obsidian.setParents(Chicken.$water, Chicken.$lava);
+        new ChickenEntity(Chicken.$smart, "#ffffff", "#ffff00").setBiomeType("NONE");
         new ChickenEntity(Chicken.$dye_black, "#f2f2f2", "#191919").setBiomeType("NONE");
         new ChickenEntity(Chicken.$dye_red, "#f2f2f2", "#993333").setBiomeType("NONE");
         new ChickenEntity(Chicken.$dye_green, "#f2f2f2", "#667f33").setBiomeType("NONE");
@@ -622,17 +693,31 @@ var RoostAPI;
         new ChickenEntity(Chicken.$quartz, "#4d0000", "#1a0000").setBiomeType("HELL");
         new ChickenEntity(Chicken.$log, "#98846d", "#528358");
         new ChickenEntity(Chicken.$sand, "#ece5b1", "#a7a06c");
-        new ChickenEntity(Chicken.$string, "0x331a00", "0x800000").setDropItem("spider_eye");
-        new ChickenEntity(Chicken.$glowstone, "0xffff66", "0xffff00");
-        new ChickenEntity(Chicken.$gunpowder, "0x999999", "0x404040");
-        new ChickenEntity(Chicken.$redstone, "0xe60000", "0x800000");
-        new ChickenEntity(Chicken.$glass, "0xffffff", "0xeeeeff");
-        new ChickenEntity(Chicken.$iron, "0xffffcc", "0xffcccc");
-        new ChickenEntity(Chicken.$coal, "0x262626", "0x000000");
-        //new ChickenEntity($aaaa, "aaaa");
+        new ChickenEntity(Chicken.$string, "#331a00", "#800000").setDropItem("spider_eye");
+        new ChickenEntity(Chicken.$glowstone, "#ffff66", "#ffff00");
+        new ChickenEntity(Chicken.$gunpowder, "#999999", "#404040");
+        new ChickenEntity(Chicken.$redstone, "#e60000", "#800000");
+        new ChickenEntity(Chicken.$glass, "#ffffff", "#eeeeff");
+        new ChickenEntity(Chicken.$iron, "#ffffcc", "#ffcccc");
+        new ChickenEntity(Chicken.$coal, "#262626", "#000000");
+        new ChickenEntity(Chicken.$gold, "#cccc00", "#ffff80");
+        new ChickenEntity(Chicken.$snowball, "#33bbff", "#0088cc").setBiomeType("SNOW");
+        new ChickenEntity(Chicken.$water, "#000099", "#8080ff");
+        new ChickenEntity(Chicken.$lava, "#cc3300", "#ffff00").setBiomeType("HELL");
+        new ChickenEntity(Chicken.$clay, "#cccccc", "#bfbfbf");
+        new ChickenEntity(Chicken.$leather, "#A7A06C", "#919191");
+        new ChickenEntity(Chicken.$netherwart, "#800000", "#331a00");
+        new ChickenEntity(Chicken.$diamond, "#99ccff", "#e6f2ff");
+        new ChickenEntity(Chicken.$blaze, "#ffff66", "#ff3300");
+        new ChickenEntity(Chicken.$slime, "#009933", "#99ffbb");
+        new ChickenEntity(Chicken.$ender, "#001a00", "#001a33");
+        new ChickenEntity(Chicken.$ghast, "#ffffcc", "#ffffff");
+        new ChickenEntity(Chicken.$emerald, "#00cc00", "#003300");
+        new ChickenEntity(Chicken.$magmacream, "#1a0500", "#000000");
+        new ChickenEntity(Chicken.$pshard, "#43806e", "#9fcbbc");
+        new ChickenEntity(Chicken.$pcrystal, "#4e6961", "#dfe9dc");
+        new ChickenEntity(Chicken.$obsidian, "#08080e", "#463a60");
+        new ChickenEntity(Chicken.$soulsand, "#453125", "#d52f08").setBiomeType("HELL");
         //KEX.LootModule.createLootTableModifier("entities/chicken_dye_blue").addItem(VanillaItemID.nether_star, 1, 0, 1.0);
     })(Chicken = RoostAPI.Chicken || (RoostAPI.Chicken = {}));
 })(RoostAPI || (RoostAPI = {}));
-Callback.addCallback("PreLoaded", function () {
-    ChickenEntity.generateAllJson();
-});

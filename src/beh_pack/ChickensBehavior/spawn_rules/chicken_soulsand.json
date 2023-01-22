@@ -1,0 +1,26 @@
+{
+	"format_version": "1.8.0",
+	"minecraft:spawn_rules": {
+		"description": {
+			"identifier": "chickens:chicken_soulsand",
+			"population_control": "animal"
+		},
+		"conditions": [
+			{
+				"minecraft:weight": {
+					"default": 10
+				},
+				"minecraft:herd": {
+					"min_size": 2,
+					"max_size": 4
+				},
+				"minecraft:spawns_underground": {},
+				"minecraft:biome_filter": {
+					"test": "has_biome_tag",
+					"operator": "==",
+					"value": "nether"
+				}
+			}
+		]
+	}
+}
