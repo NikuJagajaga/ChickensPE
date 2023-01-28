@@ -26,6 +26,11 @@ const getAddonItemIdentifier = (id: number): string => {
 }
 
 
-Callback.addCallback("PostLoaded", () => {
-    ChickenEntity.generateAllJson();
+/*
+Callback.addCallback("NativeCommand", (command: string) => {
+    if(command == "/chickens genall"){
+        ChickenEntity.generateAllJson();
+        Game.message("Done.")
+    }
 });
+*/

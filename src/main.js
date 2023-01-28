@@ -37,9 +37,14 @@ var getAddonItemIdentifier = function (id) {
     }
     return "";
 };
-Callback.addCallback("PostLoaded", function () {
-    ChickenEntity.generateAllJson();
+/*
+Callback.addCallback("NativeCommand", (command: string) => {
+    if(command == "/chickens genall"){
+        ChickenEntity.generateAllJson();
+        Game.message("Done.")
+    }
 });
+*/ 
 var ItemColoredEgg = /** @class */ (function (_super) {
     __extends(ItemColoredEgg, _super);
     function ItemColoredEgg(stringID, name, insideEntity) {

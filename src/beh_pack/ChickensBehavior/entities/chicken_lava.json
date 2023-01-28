@@ -96,7 +96,7 @@
 						"min_wait_time": 18000,
 						"max_wait_time": 36000,
 						"spawn_sound": "plop",
-						"spawn_item": "minecraft:liquid_egg_lava",
+						"spawn_item": "minecraft:item_liquid_egg_lava",
 						"filters": {
 							"test": "rider_count",
 							"subject": "self",
